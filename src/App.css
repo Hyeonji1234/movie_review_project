@@ -1,0 +1,26 @@
+.App {
+  min-height: 100vh;
+  background-color: #141414;
+}
+
+.main-content {
+  padding-top: 70px;
+  min-height: calc(100vh - 70px);
+}
+
+/* 반응형 컨테이너 */
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding-top: 60px;
+  }
+
+  .container {
+    padding: 0 15px;
+  }
+}
