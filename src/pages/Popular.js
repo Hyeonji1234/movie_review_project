@@ -8,23 +8,23 @@ const Popular = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // ✅ TMDB 응답이 랩핑되어도/안되어도 안전하게 파싱
-    const getTmdbPayload = (response) => response?.data?.data ?? response?.data ?? {};
-    const getResultsArray = (payload) => (Array.isArray(payload?.results) ? payload.results : []);
-
     useEffect(() => {
         fetchMovies();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchMovies = async () => {
         try {
             setLoading(true);
-            setError(null);
 
-            const response = await movieAPI.getTopRated(1);
-            const payload = getTmdbPayload(response);
-            const results = getResultsArray(payload);
+            const response = await movieAPI.getTopRated();
+
+            // ✅ 백엔드가 {success,data}든, TMDB raw든 둘 다 대응
+            const payload = response.data?.data ?? response.data;
+            const results = payload?.results;
+
+            if (!Array.isArray(results)) {
+                throw new Error('Invalid /movies/top-rated response: results is not an array');
+            }
 
             setMovies(results);
         } catch (err) {
