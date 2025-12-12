@@ -1,40 +1,35 @@
 import axios from 'axios';
 
-// axios 인스턴스는 반드시 한 번만 선언
 const api = axios.create({
-    baseURL: `${process.env.REACT_APP_API_BASE_URL}/api`,
+    baseURL: process.env.REACT_APP_API_URL,
 });
 
-/* =========================
-   영화 API
-========================= */
+// 🎬 영화 API
 export const movieAPI = {
     getPopular: (page = 1) =>
-        api.get('/movies/popular', { params: { page } }),
-
+        api.get(`/movies/popular?page=${page}`),
     getTopRated: (page = 1) =>
-        api.get('/movies/top-rated', { params: { page } }),
-
-    searchMovies: (query, page = 1) =>
-        api.get('/movies/search', { params: { query, page } }),
-
-    getMovieDetails: (id) =>
+        api.get(`/movies/top-rated?page=${page}`),
+    search: (query, page = 1) =>
+        api.get(`/movies/search?query=${query}&page=${page}`),
+    getDetail: (id) =>
         api.get(`/movies/${id}`),
 };
 
-/* =========================
-   유저 API
-========================= */
-export const userAPI = {
-    login: (data) =>
-        api.post('/users/login', data),
-
-    register: (data) =>
-        api.post('/users/register', data),
-
-    getProfile: () =>
-        api.get('/users/profile'),
+// 📝 리뷰 API
+export const reviewAPI = {
+    getReviews: (movieId) =>
+        api.get(`/reviews/${movieId}`),
+    addReview: (data) =>
+        api.post(`/reviews`, data),
 };
 
-// 기본 axios 인스턴스 export
+// 👤 유저 API
+export const userAPI = {
+    login: (data) =>
+        api.post(`/users/login`, data),
+    register: (data) =>
+        api.post(`/users/register`, data),
+};
+
 export default api;
