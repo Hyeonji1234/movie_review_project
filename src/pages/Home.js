@@ -13,7 +13,7 @@ const Home = () => {
     const [error, setError] = useState(null);
     const [hasMore, setHasMore] = useState(true);
 
-    const observer = useRef();
+    const observer = useRef(null);
 
     const lastMovieElementRef = useCallback(
         (node) => {
@@ -22,7 +22,7 @@ const Home = () => {
 
             observer.current = new IntersectionObserver((entries) => {
                 if (entries[0].isIntersecting && hasMore) {
-                    setPage((prevPage) => prevPage + 1);
+                    setPage((prev) => prev + 1);
                 }
             });
 
@@ -31,28 +31,23 @@ const Home = () => {
         [loadingMore, hasMore]
     );
 
-    // 초기 로딩
     useEffect(() => {
         fetchInitialMovies();
     }, []);
 
-    // 페이지 증가 시 추가 로딩
     useEffect(() => {
-        if (page > 1) {
-            fetchMoreMovies();
-        }
+        if (page > 1) fetchMoreMovies();
     }, [page]);
 
     const fetchInitialMovies = async () => {
         try {
             setLoading(true);
-
-            const response = await movieAPI.getPopular(1);
-            const results = response.data.results;
+            const res = await movieAPI.getPopular(1);
+            const results = res.data?.results || [];
 
             setHeroMovies(results.slice(0, 5));
             setMovies(results);
-            setHasMore(response.data.total_pages > 1);
+            setHasMore(1 < res.data.total_pages);
         } catch (err) {
             console.error(err);
             setError('영화 목록을 불러오는데 실패했습니다.');
@@ -64,14 +59,13 @@ const Home = () => {
     const fetchMoreMovies = async () => {
         try {
             setLoadingMore(true);
+            const res = await movieAPI.getPopular(page);
+            const results = res.data?.results || [];
 
-            const response = await movieAPI.getPopular(page);
-            const results = response.data.results;
-
-            setMovies((prevMovies) => [...prevMovies, ...results]);
-            setHasMore(page < response.data.total_pages);
+            setMovies((prev) => [...prev, ...results]);
+            setHasMore(page < res.data.total_pages);
         } catch (err) {
-            console.error('추가 영화 로딩 실패:', err);
+            console.error(err);
         } finally {
             setLoadingMore(false);
         }
@@ -100,6 +94,7 @@ const Home = () => {
 
             <div className="container">
                 <h2 className="page-title">인기 영화</h2>
+
                 <div className="movies-grid">
                     {movies.map((movie, index) => {
                         if (movies.length === index + 1) {

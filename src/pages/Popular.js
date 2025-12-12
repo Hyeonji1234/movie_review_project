@@ -15,12 +15,8 @@ const Popular = () => {
     const fetchMovies = async () => {
         try {
             setLoading(true);
-
-            // 인기 영화 or 최고 평점 영화 중 선택
-            const response = await movieAPI.getTopRated();
-            // const response = await movieAPI.getPopular();
-
-            setMovies(response.data.results);
+            const res = await movieAPI.getTopRated(1);
+            setMovies(res.data?.results || []);
         } catch (err) {
             console.error(err);
             setError('영화 목록을 불러오는데 실패했습니다.');
@@ -51,7 +47,7 @@ const Popular = () => {
             <div className="container">
                 <h1 className="page-title">최고 평점 영화</h1>
                 <div className="movies-grid">
-                    {movies.map(movie => (
+                    {movies.map((movie) => (
                         <MovieCard key={movie.id} movie={movie} />
                     ))}
                 </div>
