@@ -15,6 +15,11 @@ const Home = () => {
 
     const observer = useRef(null);
 
+    // ✅ TMDB 응답이 랩핑되어도/안되어도 안전하게 파싱
+    const getTmdbPayload = (response) => response?.data?.data ?? response?.data ?? {};
+    const getResultsArray = (payload) => (Array.isArray(payload?.results) ? payload.results : []);
+    const getTotalPages = (payload) => Number(payload?.total_pages ?? 1);
+
     const lastMovieElementRef = useCallback(
         (node) => {
             if (loadingMore) return;
@@ -33,23 +38,35 @@ const Home = () => {
 
     useEffect(() => {
         fetchInitialMovies();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // 추가 페이지 로딩
     useEffect(() => {
-        if (page > 1) fetchMoreMovies();
+        if (page > 1) {
+            fetchMoreMovies();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page]);
 
     const fetchInitialMovies = async () => {
         try {
             setLoading(true);
-            const res = await movieAPI.getPopular(1);
-            const results = res.data?.results || [];
+            setError(null);
 
+            const response = await movieAPI.getPopular(1);
+
+            const payload = getTmdbPayload(response);
+            const results = getResultsArray(payload);
+            const totalPages = getTotalPages(payload);
+
+            // 히어로 섹션용으로 상위 5개 영화 사용
             setHeroMovies(results.slice(0, 5));
             setMovies(results);
-            setHasMore(1 < res.data.total_pages);
+
+            setHasMore(1 < totalPages);
         } catch (err) {
-            console.error(err);
+            console.error('초기 영화 로딩 실패:', err);
             setError('영화 목록을 불러오는데 실패했습니다.');
         } finally {
             setLoading(false);
@@ -59,13 +76,17 @@ const Home = () => {
     const fetchMoreMovies = async () => {
         try {
             setLoadingMore(true);
-            const res = await movieAPI.getPopular(page);
-            const results = res.data?.results || [];
 
-            setMovies((prev) => [...prev, ...results]);
-            setHasMore(page < res.data.total_pages);
+            const response = await movieAPI.getPopular(page);
+
+            const payload = getTmdbPayload(response);
+            const results = getResultsArray(payload);
+            const totalPages = getTotalPages(payload);
+
+            setMovies((prevMovies) => [...prevMovies, ...results]);
+            setHasMore(page < totalPages);
         } catch (err) {
-            console.error(err);
+            console.error('추가 영화 로딩 실패:', err);
         } finally {
             setLoadingMore(false);
         }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { movieAPI } from '../services/api';
 import MovieCard from '../components/MovieCard';
 import './Home.css';
@@ -8,18 +8,28 @@ const Popular = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // ✅ TMDB 응답이 랩핑되어도/안되어도 안전하게 파싱
+    const getTmdbPayload = (response) => response?.data?.data ?? response?.data ?? {};
+    const getResultsArray = (payload) => (Array.isArray(payload?.results) ? payload.results : []);
+
     useEffect(() => {
         fetchMovies();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchMovies = async () => {
         try {
             setLoading(true);
-            const res = await movieAPI.getTopRated(1);
-            setMovies(res.data?.results || []);
+            setError(null);
+
+            const response = await movieAPI.getTopRated(1);
+            const payload = getTmdbPayload(response);
+            const results = getResultsArray(payload);
+
+            setMovies(results);
         } catch (err) {
-            console.error(err);
             setError('영화 목록을 불러오는데 실패했습니다.');
+            console.error(err);
         } finally {
             setLoading(false);
         }
