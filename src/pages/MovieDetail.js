@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { movieAPI } from '../services/api';
-import YouTube from 'react-youtube';
+import { movieAPI, reviewAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import './MovieDetail.css';
 
 const TAG_OPTIONS = [
@@ -9,164 +9,160 @@ const TAG_OPTIONS = [
     '액션', '감동', '연출', '잔인함', 'OST'
 ];
 
-function MovieDetail() {
+const MovieDetail = () => {
     const { movieId } = useParams();
+    const { isAuthenticated, user } = useAuth();
 
     const [movie, setMovie] = useState(null);
-    const [videos, setVideos] = useState([]);
-    const [rating, setRating] = useState(0);
+    const [reviews, setReviews] = useState([]);
+    const [trailers, setTrailers] = useState([]);
+    const [selectedTrailer, setSelectedTrailer] = useState(null);
+
     const [comment, setComment] = useState('');
+    const [rating, setRating] = useState(5);
+    const [spoiler, setSpoiler] = useState(false);
     const [tags, setTags] = useState([]);
 
-    /* ================= 영화 정보 ================= */
+    const [loading, setLoading] = useState(true);
+
     useEffect(() => {
-        const fetchMovie = async () => {
-            try {
-                const res = await movieAPI.getMovieDetail(movieId);
-                setMovie(res.data);
-            } catch (e) {
-                console.error('영화 정보 로딩 실패', e);
-            }
-        };
-        fetchMovie();
+        fetchData();
     }, [movieId]);
 
-    /* ================= 트레일러 ================= */
-    useEffect(() => {
-        const fetchVideos = async () => {
-            try {
-                const res = await movieAPI.getMovieVideos(movieId);
-                setVideos(res.data.results || []);
-            } catch (e) {
-                console.error('트레일러 로딩 실패', e);
-            }
-        };
-        fetchVideos();
-    }, [movieId]);
+    const fetchData = async () => {
+        try {
+            setLoading(true);
 
-    /* ================= 태그 토글 ================= */
-    const toggleTag = (tag) => {
-        setTags((prev) =>
-            prev.includes(tag)
-                ? prev.filter((t) => t !== tag)
-                : [...prev, tag]
-        );
+            const [movieRes, reviewRes] = await Promise.all([
+                movieAPI.getMovieDetails(movieId),
+                reviewAPI.getReviewsByMovie(movieId),
+            ]);
+
+            const movieData = movieRes.data.data;
+            setMovie(movieData);
+            setReviews(reviewRes.data.data || []);
+
+            if (movieData?.videos?.results) {
+                const yt = movieData.videos.results.filter(
+                    v => v.site === 'YouTube' && v.type === 'Trailer'
+                );
+                setTrailers(yt);
+                if (yt.length > 0) setSelectedTrailer(yt[0]);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    /* ================= 렌더 가드 ================= */
-    if (!movie) return <div className="loading">로딩 중...</div>;
+    const submitReview = async (e) => {
+        e.preventDefault();
+        if (!isAuthenticated) return alert('로그인 필요');
 
-    const trailer = videos.find(
-        (v) => v.site === 'YouTube' && v.type === 'Trailer'
-    );
+        await reviewAPI.createReview({
+            movie_id: Number(movieId),
+            rating,
+            comment,
+            spoiler,
+            tags: tags.join(',')
+        });
+
+        setComment('');
+        setRating(5);
+        setSpoiler(false);
+        setTags([]);
+        fetchData();
+    };
+
+    if (loading) return <p className="loading">로딩 중...</p>;
+    if (!movie) return <p>영화 없음</p>;
 
     return (
-        <div className="movie-detail-container">
-            {/* 배경 */}
-            {movie.backdrop_path && (
-                <div
-                    className="backdrop"
-                    style={{
-                        backgroundImage: `url(https://image.tmdb.org/t/p/original${movie.backdrop_path})`
-                    }}
+        <div className="movie-detail-page">
+            <h1>{movie.title}</h1>
+
+            <p>{movie.overview}</p>
+
+            {/* 🎬 예고편 */}
+            {selectedTrailer && (
+                <iframe
+                    width="100%"
+                    height="450"
+                    src={`https://www.youtube.com/embed/${selectedTrailer.key}`}
+                    title="trailer"
+                    allowFullScreen
                 />
             )}
 
-            <div className="movie-detail-content">
-                {/* 포스터 */}
-                {movie.poster_path && (
-                    <img
-                        className="poster"
-                        src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-                        alt={movie.title}
+            {/* 📝 리뷰 작성 */}
+            {isAuthenticated && (
+                <form onSubmit={submitReview}>
+                    <select value={rating} onChange={e => setRating(+e.target.value)}>
+                        {[1, 2, 3, 4, 5].map(n => (
+                            <option key={n} value={n}>{n}점</option>
+                        ))}
+                    </select>
+
+                    <textarea
+                        value={comment}
+                        onChange={e => setComment(e.target.value)}
+                        placeholder="리뷰 작성"
                     />
-                )}
 
-                {/* 영화 정보 */}
-                <div className="info">
-                    <h1>{movie.title}</h1>
+                    <label>
+                        <input
+                            type="checkbox"
+                            checked={spoiler}
+                            onChange={e => setSpoiler(e.target.checked)}
+                        />
+                        스포일러
+                    </label>
 
-                    {movie.tagline && (
-                        <p className="tagline">{movie.tagline}</p>
-                    )}
-
-                    {movie.overview && (
-                        <>
-                            <h3>줄거리</h3>
-                            <p>{movie.overview}</p>
-                        </>
-                    )}
-
-                    <div className="meta">
-                        {movie.release_date && <span>개봉일: {movie.release_date}</span>}
-                        {movie.runtime && <span>러닝타임: {movie.runtime}분</span>}
-                        {movie.vote_average !== undefined && (
-                            <span>평점 ⭐ {movie.vote_average}</span>
-                        )}
-                    </div>
-
-                    {/* 장르 */}
-                    {movie.genres?.length > 0 && (
-                        <div className="genres">
-                            {movie.genres.map((g) => (
-                                <span key={g.id} className="genre">
-                                    {g.name}
-                                </span>
+                    {spoiler && (
+                        <div className="tag-box">
+                            {TAG_OPTIONS.map(tag => (
+                                <button
+                                    type="button"
+                                    key={tag}
+                                    className={tags.includes(tag) ? 'on' : ''}
+                                    onClick={() =>
+                                        setTags(prev =>
+                                            prev.includes(tag)
+                                                ? prev.filter(t => t !== tag)
+                                                : [...prev, tag]
+                                        )
+                                    }
+                                >
+                                    #{tag}
+                                </button>
                             ))}
                         </div>
                     )}
-                </div>
-            </div>
 
-            {/* 트레일러 */}
-            {trailer && (
-                <div className="trailer">
-                    <h2>공식 트레일러</h2>
-                    <YouTube videoId={trailer.key} />
-                </div>
+                    <button type="submit">등록</button>
+                </form>
             )}
 
-            {/* ================= 리뷰 작성 ================= */}
-            <div className="review-section">
-                <h2>리뷰 작성</h2>
-
-                {/* 별점 */}
-                <div className="rating">
-                    {[1, 2, 3, 4, 5].map((n) => (
-                        <span
-                            key={n}
-                            className={n <= rating ? 'star active' : 'star'}
-                            onClick={() => setRating(n)}
-                        >
-                            ★
-                        </span>
-                    ))}
-                </div>
-
-                {/* 태그 */}
-                <div className="tag-box">
-                    {TAG_OPTIONS.map((tag) => (
-                        <button
-                            key={tag}
-                            className={tags.includes(tag) ? 'tag selected' : 'tag'}
-                            onClick={() => toggleTag(tag)}
-                        >
-                            #{tag}
-                        </button>
-                    ))}
-                </div>
-
-                {/* 코멘트 */}
-                <textarea
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="리뷰를 작성하세요"
-                />
-
-                <button className="submit">등록</button>
+            {/* 📋 리뷰 목록 */}
+            <div className="reviews">
+                {reviews.map(r => (
+                    <div key={r.review_id} className="review">
+                        <strong>{r.username}</strong>
+                        <span> ⭐{r.rating}</span>
+                        {r.tags && (
+                            <div className="tags">
+                                {r.tags.split(',').map(t => (
+                                    <span key={t}>#{t}</span>
+                                ))}
+                            </div>
+                        )}
+                        <p>{r.comment}</p>
+                    </div>
+                ))}
             </div>
         </div>
     );
-}
+};
 
 export default MovieDetail;

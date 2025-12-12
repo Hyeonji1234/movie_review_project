@@ -1,56 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { movieAPI } from '../services/api';
 import MovieCard from '../components/MovieCard';
-import './Home.css';
 
 const Popular = () => {
     const [movies, setMovies] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
 
     useEffect(() => {
-        fetchMovies();
+        movieAPI.getPopular(1).then(res => {
+            setMovies(res.data.data.results || []);
+        });
     }, []);
 
-    const fetchMovies = async () => {
-        try {
-            setLoading(true);
-            const response = await movieAPI.getTopRated();
-            setMovies(response.data?.results ?? []);
-        } catch (err) {
-            console.error(err);
-            setError('영화 목록을 불러오는데 실패했습니다.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className="loading-container">
-                <div className="loading-spinner" />
-                <p>영화 목록을 불러오는 중...</p>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="error-container">
-                <p>{error}</p>
-            </div>
-        );
-    }
-
     return (
-        <div className="home-page">
-            <div className="container">
-                <h1 className="page-title">최고 평점 영화</h1>
-                <div className="movies-grid">
-                    {movies.map((movie) => (
-                        <MovieCard key={movie.id} movie={movie} />
-                    ))}
-                </div>
+        <div className="container">
+            <h2>인기 영화</h2>
+            <div className="movies-grid">
+                {movies.map(m => (
+                    <MovieCard key={m.id} movie={m} />
+                ))}
             </div>
         </div>
     );
