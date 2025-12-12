@@ -15,21 +15,11 @@ const Popular = () => {
     const fetchMovies = async () => {
         try {
             setLoading(true);
-
             const response = await movieAPI.getTopRated();
-
-            // ✅ 백엔드가 {success,data}든, TMDB raw든 둘 다 대응
-            const payload = response.data?.data ?? response.data;
-            const results = payload?.results;
-
-            if (!Array.isArray(results)) {
-                throw new Error('Invalid /movies/top-rated response: results is not an array');
-            }
-
-            setMovies(results);
+            setMovies(response.data?.results ?? []);
         } catch (err) {
-            setError('영화 목록을 불러오는데 실패했습니다.');
             console.error(err);
+            setError('영화 목록을 불러오는데 실패했습니다.');
         } finally {
             setLoading(false);
         }
@@ -38,7 +28,7 @@ const Popular = () => {
     if (loading) {
         return (
             <div className="loading-container">
-                <div className="loading-spinner"></div>
+                <div className="loading-spinner" />
                 <p>영화 목록을 불러오는 중...</p>
             </div>
         );

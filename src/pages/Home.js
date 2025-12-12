@@ -22,7 +22,7 @@ const Home = () => {
 
             observer.current = new IntersectionObserver((entries) => {
                 if (entries[0].isIntersecting && hasMore) {
-                    setPage((prevPage) => prevPage + 1);
+                    setPage((prev) => prev + 1);
                 }
             });
 
@@ -31,41 +31,27 @@ const Home = () => {
         [loadingMore, hasMore]
     );
 
-    // 초기 로딩: 히어로 섹션과 첫 페이지
     useEffect(() => {
         fetchInitialMovies();
     }, []);
 
-    // 추가 페이지 로딩
     useEffect(() => {
-        if (page > 1) {
-            fetchMoreMovies();
-        }
+        if (page > 1) fetchMoreMovies();
     }, [page]);
 
     const fetchInitialMovies = async () => {
         try {
             setLoading(true);
-
             const response = await movieAPI.getPopular(1);
 
-            // ✅ 백엔드가 {success,data}든, TMDB raw든 둘 다 대응
-            const payload = response.data?.data ?? response.data;
-            const results = payload?.results;
+            const results = response.data?.results ?? [];
 
-            if (!Array.isArray(results)) {
-                throw new Error('Invalid /movies/popular response: results is not an array');
-            }
-
-            // 히어로 섹션용으로 상위 5개 영화 사용
             setHeroMovies(results.slice(0, 5));
-            // 나머지 영화들을 목록에 표시
             setMovies(results);
-
-            setHasMore((payload?.total_pages ?? 1) > 1);
+            setHasMore(response.data?.total_pages > 1);
         } catch (err) {
-            setError('영화 목록을 불러오는데 실패했습니다.');
             console.error(err);
+            setError('영화 목록을 불러오는데 실패했습니다.');
         } finally {
             setLoading(false);
         }
@@ -74,18 +60,11 @@ const Home = () => {
     const fetchMoreMovies = async () => {
         try {
             setLoadingMore(true);
-
             const response = await movieAPI.getPopular(page);
+            const results = response.data?.results ?? [];
 
-            const payload = response.data?.data ?? response.data;
-            const results = payload?.results;
-
-            if (!Array.isArray(results)) {
-                throw new Error('Invalid /movies/popular response: results is not an array');
-            }
-
-            setMovies((prevMovies) => [...prevMovies, ...results]);
-            setHasMore(page < (payload?.total_pages ?? page));
+            setMovies((prev) => [...prev, ...results]);
+            setHasMore(page < response.data?.total_pages);
         } catch (err) {
             console.error('추가 영화 로딩 실패:', err);
         } finally {
@@ -96,7 +75,7 @@ const Home = () => {
     if (loading) {
         return (
             <div className="loading-container">
-                <div className="loading-spinner"></div>
+                <div className="loading-spinner" />
                 <p>영화 목록을 불러오는 중...</p>
             </div>
         );
@@ -115,7 +94,7 @@ const Home = () => {
             <HeroSlider movies={heroMovies} />
 
             <div className="container">
-                <h1 className="page-title">영화 목록</h1>
+                <h2 className="page-title">인기 영화</h2>
 
                 <div className="movies-grid">
                     {movies.map((movie, index) => {
@@ -132,7 +111,7 @@ const Home = () => {
 
                 {loadingMore && (
                     <div className="loading-more">
-                        <div className="loading-spinner small"></div>
+                        <div className="loading-spinner-small" />
                         <p>추가 영화를 불러오는 중...</p>
                     </div>
                 )}
