@@ -12,13 +12,27 @@ const PORT = process.env.PORT || 3001;
 
 // 미들웨어 설정
 app.use(cors({
-    origin: [
-        'http://localhost:3000',
-        'https://movie-review-project-zlhpspco-hyeonjis-projects-8b56bb5.vercel.app'
-    ],
+    origin: function (origin, callback) {
+        // 브라우저 요청이 아닌 경우 (Postman 등)
+        if (!origin) return callback(null, true);
+
+        // vercel.app에서 오는 모든 요청 허용
+        if (origin.endsWith('.vercel.app')) {
+            return callback(null, true);
+        }
+
+        // 로컬 개발 허용
+        if (origin === 'http://localhost:3000') {
+            return callback(null, true);
+        }
+
+        // 그 외 차단
+        return callback(new Error('Not allowed by CORS'));
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
 app.use(express.json()); // JSON 파싱
 app.use(express.urlencoded({ extended: true })); // URL-encoded 파싱
 
