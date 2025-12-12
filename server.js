@@ -11,7 +11,14 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // 미들웨어 설정
-app.use(cors()); // CORS 허용
+app.use(cors({
+    origin: [
+        'http://localhost:3000',
+        'https://movie-review-project-zlhpspco-hyeonjis-projects-8b56bb5.vercel.app'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json()); // JSON 파싱
 app.use(express.urlencoded({ extended: true })); // URL-encoded 파싱
 
